@@ -1,16 +1,13 @@
-/** {*/
-/*    margin: 0;*/
-/*    padding: 0;*/
-/*}*/
-
 div#osmd-render-area-wrapper {
     position: relative;
-
-    /*margin: 12px auto;*/
     box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 1px 3px 1px;
     border-radius: 5px;
-    /*width: 96%;*/
-    height: 400px;
+    /*height: 350px;*/
+    overflow-x: scroll;
+}
+
+div#osmd-render-area {
+    width: 100%;
 }
 
 div#osmd-render-area-above {
@@ -26,4 +23,10 @@ div#osmd-render-area-above {
 
 .hidden-debug {
     display: none
+}
+
+.title {
+    text-align: center;
+    white-space: nowrap;
+    font-size: min(5vw, 2.5rem);
 }
