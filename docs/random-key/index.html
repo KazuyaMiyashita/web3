@@ -1,17 +1,9 @@
+<!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-body {
-  font-family: Arial, sans-serif;
-}
-img {
-  max-width: 100%;
-  height: auto;
-}
-    </style>
-    <title>ランダムで調を表示するやつ</title>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ランダムで調を表示するやつ</title>
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -25,9 +17,116 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MWZJGH2"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
-    <h1>ランダムで調を表示するやつ</h1>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+    }
+    #key-display {
+      font-size: 2em;
+      margin: 20px;
+      color: #333;
+    }
+    button, input[type="range"] {
+      font-size: 1em;
+      margin: 10px;
+      padding: 10px 20px;
+    }
+    .controls {
+      margin: 20px 0;
+    }
+    .range-group {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>ランダムで調を表示するやつ</h1>
 
+  <div class="controls">
+    <div class="range-group">
+      <label>♭の個数:
+        <input type="range" id="flat-slider" min="0" max="7" value="6" oninput="updateRangeLabel()">
+        <span id="flat-value">6</span>
+      </label>
+      <label>♯の個数:
+        <input type="range" id="sharp-slider" min="0" max="7" value="6" oninput="updateRangeLabel()">
+        <span id="sharp-value">6</span>
+      </label>
+    </div>
+  </div>
 
-  </body>
+  <div class="controls">
+    <button onclick="setModeAndShow('major')">長調のみ</button>
+    <button onclick="setModeAndShow('minor')">短調のみ</button>
+    <button onclick="setModeAndShow('both')">長調・短調</button>
+  </div>
+
+  <div id="key-display">ここに調が表示されます</div>
+
+  <script>
+    const majorKeys = [
+      "C dur", "G dur", "D dur", "A dur", "E dur", "H dur", "Fis dur", "Cis dur",
+      "F dur", "B dur", "Es dur", "As dur", "Des dur", "Ges dur", "Ces dur"
+    ];
+    const minorKeys = [
+      "a moll", "e moll", "h moll", "fis moll", "cis moll", "gis moll", "dis moll", "ais moll",
+      "d moll", "g moll", "c moll", "f moll", "b moll", "es moll", "as moll"
+    ];
+
+    const keyMap = {
+      "C dur": 0, "G dur": 1, "D dur": 2, "A dur": 3, "E dur": 4, "H dur": 5, "Fis dur": 6, "Cis dur": 7,
+      "F dur": -1, "B dur": -2, "Es dur": -3, "As dur": -4, "Des dur": -5, "Ges dur": -6, "Ces dur": -7,
+      "a moll": 0, "e moll": 1, "h moll": 2, "fis moll": 3, "cis moll": 4, "gis moll": 5, "dis moll": 6, "ais moll": 7,
+      "d moll": -1, "g moll": -2, "c moll": -3, "f moll": -4, "b moll": -5, "es moll": -6, "as moll": -7
+    };
+
+    let mode = 'both';
+
+    function setModeAndShow(selectedMode) {
+      mode = selectedMode;
+      showRandomKey();
+    }
+
+    function updateRangeLabel() {
+      document.getElementById('flat-value').textContent = document.getElementById('flat-slider').value;
+      document.getElementById('sharp-value').textContent = document.getElementById('sharp-slider').value;
+    }
+
+    function showRandomKey() {
+      const flatMax = parseInt(document.getElementById('flat-slider').value);
+      const sharpMax = parseInt(document.getElementById('sharp-slider').value);
+
+      let candidateKeys = [];
+
+      if (mode === 'major' || mode === 'both') {
+        candidateKeys = candidateKeys.concat(majorKeys.filter(k => {
+          const v = keyMap[k];
+          return (v >= 0 && v <= sharpMax) || (v < 0 && -v <= flatMax);
+        }));
+      }
+      if (mode === 'minor' || mode === 'both') {
+        candidateKeys = candidateKeys.concat(minorKeys.filter(k => {
+          const v = keyMap[k];
+          return (v >= 0 && v <= sharpMax) || (v < 0 && -v <= flatMax);
+        }));
+      }
+
+      if (candidateKeys.length === 0) {
+        document.getElementById('key-display').textContent = "該当する調がありません";
+        return;
+      }
+
+      const randomKey = candidateKeys[Math.floor(Math.random() * candidateKeys.length)];
+      document.getElementById('key-display').textContent = randomKey;
+    }
+
+    updateRangeLabel();
+  </script>
+</body>
 </html>
-<!-- にゃっぴ -->
