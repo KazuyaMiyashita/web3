@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アルト記号クイズ</title>
+    <script src="https://cdn.jsdelivr.net/npm/abcjs@6.2.0/dist/abcjs-basic-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #e7f5fe; /* とかげのような水色 */
+            color: #333;
+            padding-bottom: 100px; /* イラストのためのスペース */
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #7e604c; /* 新しいテーマカラー */
+            margin-bottom: 30px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 0 10px; /* 画面端の余白 */
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #audio-enable-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            display: none; /* 初期状態では非表示 */
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 2000;
+            cursor: pointer;
+        }
+        #audio-enable-overlay p {
+            padding: 0 20px;
+            white-space: nowrap;
+        }
+
+        #paper {
+            width: 100%;
+            height: 130px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #feedback-container {
+            position: relative;
+            height: 45px;
+            width: 100%;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #feedback-text {
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: opacity 0.5s ease-out;
+        }
+        #progress-text {
+            position: absolute;
+            right: 10px;
+            bottom: 0;
+            font-size: 0.7em;
+            color: #888;
+        }
+        .correct { color: #28a745; }
+        .incorrect { color: #dc3545; }
+
+        #next-question-btn {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #7e604c;
+            color: white;
+            display: none;
+        }
+        #next-question-btn:hover {
+            background-color: #6a5240;
+        }
+
+        .keyboard-container {
+            display: flex;
+            width: 100%;
+            margin: 20px auto 0;
+            background-color: #333;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .white-key, .black-key {
+            border: 1px solid #555;
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: background-color 0.1s ease;
+            border-radius: 0 0 5px 5px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .white-key {
+            background-color: #fff;
+            position: relative;
+            z-index: 1;
+        }
+        .white-key:active, .white-key.active { background-color: #ddd; }
+
+        .black-key {
+            background-color: #000;
+            position: absolute;
+            z-index: 2;
+        }
+        .black-key:active, .black-key.active { background-color: #444; }
+
+        .audio-control {
+            margin-top: 30px;
+            width: 50px;
+            height: 50px;
+            background-color: #e0e0e0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .audio-control:hover { background-color: #d0d0d0; }
+        .audio-control svg {
+            width: 24px;
+            height: 24px;
+            fill: #7e604c;
+        }
+
+        .illustration-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 20px;
+            box-sizing: border-box;
+            pointer-events: none; /* イラストがクリックを妨げないように */
+            z-index: -1;
+        }
+        .illustration-footer svg {
+            width: 80px;
+            height: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div id="audio-enable-overlay">
+        <p>画面をタップしてオーディオを有効にしてください</p>
+    </div>
+
+    <div id="error-bar" class="error-bar" style="display: none;">
+        <span id="error-message"></span>
+        <button onclick="document.getElementById('error-bar').style.display='none'">X</button>
+    </div>
+
+    <h1>アルト記号クイズ</h1>
+
+    <div class="main-container">
+        <div id="paper"></div>
+        <div id="feedback-container">
+            <span id="feedback-text"></span>
+            <span id="progress-text"></span>
+            <button id="next-question-btn">次へ</button>
+        </div>
+        <div class="keyboard-container"></div>
+    </div>
+
+    <div id="audio-control" class="audio-control"></div>
+    <div id="debug-note-names" style="margin-top: 20px; font-family: monospace; font-size: 16px; color: #f0f0f0; user-select: all;"></div>
+
+    <footer class="illustration-footer">
+        <svg viewBox="0 0 100 100">
+            <g transform="translate(0, 10)">
+                <path d="M 20 80 C 5 75, 5 50, 20 45 S 35 40, 40 45 C 50 55, 50 75, 40 80 Z" stroke="#7e604c"
+                    stroke-width="2" fill="#cce7f5" />
+                <circle cx="28" cy="60" r="1.5" fill="#7e604c" />
+                <circle cx="38" cy="60" r="1.5" fill="#7e604c" />
+            </g>
+        </svg>
+        <svg viewBox="0 0 100 100">
+            <g transform="translate(20, -15)">
+                <!-- 1.3倍拡大した左向きのボディ -->
+                <path d="M 52 104 C 71.5 97.5, 71.5 62.4, 52 55.9 S 32.5 49.4, 26 55.9 C 13 68.9, 13 97.5, 26 104 Z"
+                    stroke="#7e604c" stroke-width="2" fill="#cce7f5" />
+    
+                <!-- 目も1.3倍の位置に調整 -->
+                <circle cx="41.6" cy="75.4" r="1.5" fill="#7e604c" />
+                <circle cx="28.6" cy="75.4" r="1.5" fill="#7e604c" />
+            </g>
+        </svg>
+    </footer>
+
+    <script>
+        // --- DOM要素の取得 ---
+        const keyboardContainer = document.querySelector('.keyboard-container');
+        const audioControl = document.getElementById('audio-control');
+        const feedbackText = document.getElementById('feedback-text');
+        const progressText = document.getElementById('progress-text');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+        const audioOverlay = document.getElementById('audio-enable-overlay');
+
+        // --- 状態管理変数 ---
+        let audioContext;
+        let masterGainNode;
+        let isAudioEnabled = true;
+        let currentQuestionNotes = [];
+        let currentNoteIndex = 0;
+        let feedbackTimeout;
+
+        // --- 定数 ---
+        const clef = 'alto';
+        const timeSignature = '4/4';
+        const noteModel = [
+            { name: 'C3', abc: 'C,' }, { name: 'D3', abc: 'D,' }, { name: 'E3', abc: 'E,' },
+            { name: 'F3', abc: 'F,' }, { name: 'G3', abc: 'G,' }, { name: 'A3', abc: 'A,' },
+            { name: 'B3', abc: 'B,' }, { name: 'C4', abc: 'C' }, { name: 'D4', abc: 'D' },
+            { name: 'E4', abc: 'E' }, { name: 'F4', abc: 'F' }, { name: 'G4', abc: 'G' },
+            { name: 'A4', abc: 'A' }, { name: 'B4', abc: 'B' }, { name: 'C5', abc: 'c' }
+        ];
+        const noteFrequencies = {
+            'C3': 130.81, 'C#3': 138.59, 'D3': 146.83, 'D#3': 155.56, 'E3': 164.81, 'F3': 174.61,
+            'F#3': 185.00, 'G3': 196.00, 'G#3': 207.65, 'A3': 220.00, 'A#3': 233.08, 'B3': 246.94,
+            'C4': 261.63, 'C#4': 277.18, 'D4': 293.66, 'D#4': 311.13, 'E4': 329.63, 'F4': 349.23,
+            'F#4': 369.99, 'G4': 392.00, 'G#4': 415.30, 'A4': 440.00, 'A#4': 466.16, 'B4': 493.88,
+            'C5': 523.25, 'C#5': 554.37, 'D5': 587.33, 'D#5': 622.25, 'E5': 659.25, 'F5': 698.46,
+            'F#5': 739.99, 'G5': 783.99, 'G#5': 830.61, 'A5': 880.00, 'A#5': 932.33, 'B5': 987.77
+        };
+        const speakerIcon = `<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"></path></svg>`;
+        const mutedSpeakerIcon = `<svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"></path></svg>`;
+
+        // --- UI更新関数 ---
+        function updateAudioIcon() { audioControl.innerHTML = isAudioEnabled ? speakerIcon : mutedSpeakerIcon; }
+        function highlightCurrentNote() {
+            document.querySelectorAll('#paper .abcjs-note').forEach(el => el.setAttribute('fill', '#000000'));
+            if (currentNoteIndex < currentQuestionNotes.length) {
+                const noteElement = document.querySelector(`#paper .abcjs-n${currentNoteIndex}`);
+                if (noteElement) noteElement.setAttribute('fill', '#7e604c');
+            }
+        }
+        function updateProgress() { progressText.textContent = (currentNoteIndex < currentQuestionNotes.length) ? `(${currentNoteIndex + 1}/${currentQuestionNotes.length})` : ''; }
+        function triggerConfetti() { confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } }); }
+
+        // --- 音声処理 ---
+        function initAudioContext() {
+            if (audioContext) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                masterGainNode = audioContext.createGain();
+                masterGainNode.connect(audioContext.destination);
+                masterGainNode.gain.value = isAudioEnabled ? 0.5 : 0;
+            } catch (e) { console.error("AudioContext initialization failed:", e); }
+        }
+        function toggleAudio() {
+            if (!audioContext) initAudioContext();
+            if (!audioContext) return;
+            if (audioContext.state === 'suspended') audioContext.resume();
+            isAudioEnabled = !isAudioEnabled;
+            masterGainNode.gain.value = isAudioEnabled ? 0.5 : 0;
+            updateAudioIcon();
+        }
+        function playNote(frequency) {
+            if (!audioContext || !isAudioEnabled) return;
+            if (audioContext.state === 'suspended') audioContext.resume();
+            const now = audioContext.currentTime;
+            const gainNode = audioContext.createGain();
+            gainNode.connect(masterGainNode);
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.5, now + 0.02);
+            gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frequency, now);
+            oscillator.connect(gainNode);
+            oscillator.start(now);
+            oscillator.stop(now + 0.4);
+        }
+
+        // --- クイズロジック ---
+        function startNewQuestion() {
+            currentNoteIndex = 0;
+            feedbackText.textContent = '';
+            feedbackText.style.opacity = 1;
+            feedbackText.style.display = 'inline';
+            nextQuestionBtn.style.display = 'none';
+            currentQuestionNotes = Array.from({length: 8}, () => noteModel[Math.floor(Math.random() * noteModel.length)]);
+            drawNotes(currentQuestionNotes);
+            updateProgress();
+        }
+
+        function checkAnswer(pressedNoteName) {
+            if (currentNoteIndex >= currentQuestionNotes.length) return;
+            const correctNote = currentQuestionNotes[currentNoteIndex];
+            clearTimeout(feedbackTimeout);
+            feedbackText.style.opacity = 1;
+            feedbackText.style.display = 'inline';
+            nextQuestionBtn.style.display = 'none';
+
+            if (pressedNoteName === correctNote.name) {
+                feedbackText.textContent = '正解！';
+                feedbackText.className = 'correct';
+                currentNoteIndex++;
+                feedbackTimeout = setTimeout(() => { feedbackText.style.opacity = 0; }, 500);
+                setTimeout(() => {
+                    highlightCurrentNote();
+                    updateProgress();
+                }, 100);
+
+                if (currentNoteIndex === currentQuestionNotes.length) {
+                    progressText.textContent = '';
+                    feedbackText.style.opacity = 1;
+                    feedbackText.textContent = 'やったね！';
+                    triggerConfetti();
+                    setTimeout(() => {
+                        feedbackText.style.display = 'none';
+                        nextQuestionBtn.style.display = 'block';
+                    }, 1500);
+                }
+            } else {
+                feedbackText.textContent = 'もう一度！';
+                feedbackText.className = 'incorrect';
+                feedbackTimeout = setTimeout(() => { feedbackText.style.opacity = 0; }, 2000);
+            }
+        }
+
+        // --- 描画処理 ---
+        function drawNotes(notes) {
+            const paperElement = document.getElementById('paper');
+            paperElement.innerHTML = ''; 
+            const paperWidth = paperElement.offsetWidth;
+            const abcNotes = notes.map(note => note.abc);
+            const abcString = `K:C clef=${clef}\nM:${timeSignature}\nL:1/4\n${abcNotes.slice(0, 4).join(' ')} | ${abcNotes.slice(4).join(' ')}`;
+            ABCJS.renderAbc(paperElement, abcString, {
+                staffwidth: paperWidth - 20,
+                add_classes: true,
+                responsive: "resize"
+            });
+            document.getElementById('debug-note-names').textContent = notes.map(note => note.name).join(' ');
+            setTimeout(highlightCurrentNote, 100);
+        }
+
+        function buildKeyboard() {
+            const whiteKeyNotes = ['C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'];
+            const blackKeyNotes = {'C3':'C#3','D3':'D#3','F3':'F#3','G3':'G#3','A3':'A#3','C4':'C#4','D4':'D#4','F4':'F#4','G4':'G#4','A4':'A#4'};
+            keyboardContainer.innerHTML = '';
+            whiteKeyNotes.forEach(note => {
+                const key = document.createElement('div');
+                key.className = 'white-key';
+                key.dataset.note = note;
+                keyboardContainer.appendChild(key);
+                if (blackKeyNotes[note]) {
+                    const blackKey = document.createElement('div');
+                    blackKey.className = 'black-key';
+                    blackKey.dataset.note = blackKeyNotes[note];
+                    keyboardContainer.appendChild(blackKey);
+                }
+            });
+        }
+
+        function resizeKeyboard() {
+            const containerWidth = keyboardContainer.offsetWidth;
+            const whiteKeyWidth = containerWidth / 15;
+            const whiteKeyHeight = whiteKeyWidth * 4.5;
+            const blackKeyWidth = whiteKeyWidth * 0.6;
+            const blackKeyHeight = whiteKeyHeight * 0.6;
+            let whiteKeyLeft = 0;
+            keyboardContainer.querySelectorAll('.white-key').forEach(key => {
+                key.style.position = 'absolute';
+                key.style.left = `${whiteKeyLeft}px`;
+                key.style.width = `${whiteKeyWidth}px`;
+                key.style.height = `${whiteKeyHeight}px`;
+                whiteKeyLeft += whiteKeyWidth;
+            });
+            keyboardContainer.querySelectorAll('.black-key').forEach(key => {
+                const prevWhiteKey = key.previousElementSibling;
+                key.style.left = `${prevWhiteKey.offsetLeft + whiteKeyWidth - (blackKeyWidth / 2)}px`;
+                key.style.width = `${blackKeyWidth}px`;
+                key.style.height = `${blackKeyHeight}px`;
+            });
+            keyboardContainer.style.height = `${whiteKeyHeight}px`;
+        }
+
+        // --- イベントハンドラ ---
+        function handleKeyStart(event) {
+            event.preventDefault();
+            const keyElement = event.target;
+            keyElement.classList.add('active');
+            playNote(noteFrequencies[keyElement.dataset.note]);
+            checkAnswer(keyElement.dataset.note);
+        }
+        function handleKeyEnd(event) {
+            event.preventDefault();
+            event.target.classList.remove('active');
+        }
+
+        // --- 初期化 ---
+        function activateInteraction() {
+            initAudioContext();
+            keyboardContainer.addEventListener('mousedown', handleKeyStart);
+            keyboardContainer.addEventListener('mouseup', handleKeyEnd);
+            keyboardContainer.addEventListener('touchstart', handleKeyStart, { passive: false });
+            keyboardContainer.addEventListener('touchend', handleKeyEnd);
+        }
+
+        window.addEventListener('load', () => {
+            buildKeyboard();
+            resizeKeyboard();
+            window.addEventListener('resize', resizeKeyboard);
+            updateAudioIcon();
+            audioControl.addEventListener('click', toggleAudio);
+            nextQuestionBtn.addEventListener('click', startNewQuestion);
+            startNewQuestion();
+
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            if (isTouchDevice) {
+                audioOverlay.style.display = 'flex';
+                audioOverlay.addEventListener('click', () => {
+                    audioOverlay.style.display = 'none';
+                    activateInteraction();
+                }, { once: true });
+            } else {
+                audioOverlay.style.display = 'none';
+                activateInteraction();
+            }
+        });
+    </script>
+</body>
+</html>
